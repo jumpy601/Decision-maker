@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0F6E56">
+<title>決策羅盤</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+  :root{
+    --bg:#F7F5EF; --surface:#FFFFFF; --surface-2:#F0EEE6; --border:#E3DFD3;
+    --text:#2B2B27; --text-secondary:#5C5A50; --text-muted:#8B8878;
+    --teal-bg:#E1F5EE; --teal-text:#085041; --teal-solid:#1D9E75;
+    --amber-bg:#FAEEDA; --amber-text:#633806; --amber-solid:#BA7517;
+    --coral-bg:#FAECE7; --coral-text:#712B13; --coral-solid:#D85A30;
+    --warn-bg:#FAEEDA; --warn-text:#633806;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1B1B18; --surface:#242420; --surface-2:#2C2C27; --border:#3C3B34;
+      --text:#EDEBE3; --text-secondary:#B5B2A5; --text-muted:#83816F;
+      --teal-bg:#085041; --teal-text:#9FE1CB; --teal-solid:#5DCAA5;
+      --amber-bg:#633806; --amber-text:#FAC775; --amber-solid:#EF9F27;
+      --coral-bg:#712B13; --coral-text:#F5C4B3; --coral-solid:#F0997B;
+      --warn-bg:#633806; --warn-text:#FAC775;
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI",sans-serif;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:1.5rem 1.25rem 3rem;}
+  header{margin-bottom:1.75rem;}
+  header p.eyebrow{font-size:12px;color:var(--text-muted);letter-spacing:0.02em;margin:0 0 4px;}
+  h1{font-size:22px;font-weight:600;margin:0 0 6px;}
+  header p.sub{font-size:14px;color:var(--text-secondary);margin:0;line-height:1.6;}
+
+  .slider-block{margin-bottom:1.4rem;}
+  .slider-title{font-size:14px;color:var(--text-secondary);margin-bottom:10px;line-height:1.5;}
+  input[type=range]{
+    width:100%; -webkit-appearance:none; appearance:none; height:6px;
+    border-radius:3px; outline:none; margin:0; transition:background 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:26px; height:26px; border-radius:50%;
+    background:var(--surface); cursor:pointer; border:3px solid var(--teal-solid);
+    box-shadow:0 1px 4px rgba(0,0,0,0.25); margin-top:-1px;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:26px; height:26px; border-radius:50%; background:var(--surface);
+    cursor:pointer; border:3px solid var(--teal-solid); box-shadow:0 1px 4px rgba(0,0,0,0.25);
+  }
+  input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:transparent;}
+  .slider-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:6px;}
+
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;margin:0.5rem 0 1.5rem;}
+  .summary-line{font-size:15px;font-weight:600;text-align:center;margin:0.25rem 0 1.25rem;line-height:1.6;padding:0 0.5rem;transition:color 0.2s;}
+  .loop-row{display:flex;justify-content:center;margin-bottom:1.25rem;}
+
+  .metrics{display:flex;gap:10px;margin-bottom:1.1rem;}
+  .metric{flex:1;background:var(--surface-2);border-radius:12px;padding:0.85rem 0.7rem;min-width:0;display:flex;align-items:center;gap:8px;}
+  .metric i{font-size:16px;color:var(--text-muted);flex-shrink:0;}
+  .metric-label{font-size:11px;color:var(--text-muted);margin:0 0 3px;}
+  .metric-value{font-size:15px;font-weight:600;margin:0;line-height:1.3;}
+
+  .warn{display:none;gap:10px;align-items:flex-start;background:var(--warn-bg);color:var(--warn-text);border-radius:12px;padding:0.9rem 1rem;font-size:13px;line-height:1.6;margin-bottom:1.25rem;}
+  .warn.show{display:flex;}
+
+  .mode-card{display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.1rem;margin-bottom:10px;}
+  .icon-circle{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+  .mode-title{font-weight:600;font-size:14px;margin:0 0 3px;}
+  .mode-text{font-size:13px;color:var(--text-secondary);margin:0;line-height:1.6;}
+
+  footer{text-align:center;margin-top:1.5rem;}
+  footer p{font-size:12px;color:var(--text-muted);margin:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">OODA × 機率思考</p>
+    <h1>決策羅盤</h1>
+    <p class="sub">拖動下面四個滑桿，描述你正面對的決定，立刻看到建議的節奏、分析預算與下注門檻。</p>
+  </header>
+
+  <div class="slider-block">
+    <div class="slider-title">可逆性：這個決定做錯了，回頭的成本高嗎？</div>
+    <input type="range" id="rev" min="0" max="100" value="50" step="1">
+    <div class="slider-labels"><span>不可逆，代價高</span><span>完全可逆，隨時改</span></div>
+  </div>
+  <div class="slider-block">
+    <div class="slider-title">時間壓力：環境變化的速度</div>
+    <input type="range" id="urg" min="0" max="100" value="50" step="1">
+    <div class="slider-labels"><span>不急，可以等</span><span>非常急迫</span></div>
+  </div>
+  <div class="slider-block">
+    <div class="slider-title">資訊完整度：現在手上的資訊夠嗎？</div>
+    <input type="range" id="info" min="0" max="100" value="50" step="1">
+    <div class="slider-labels"><span>資訊很少</span><span>資訊足夠</span></div>
+  </div>
+  <div class="slider-block">
+    <div class="slider-title">情緒涉入度：這件事會不會讓你特別怕錯？</div>
+    <input type="range" id="emo" min="0" max="100" value="50" step="1">
+    <div class="slider-labels"><span>很平常</span><span>很在意，會焦慮</span></div>
+  </div>
+
+  <div class="gauge-wrap">
+    <svg width="260" height="170" viewBox="0 0 260 170" aria-hidden="true">
+      <path d="M25,150 A105,105 0 0 1 235,150" fill="none" stroke="var(--border)" stroke-width="14" stroke-linecap="round"/>
+      <path id="arcFill" d="M25,150 A105,105 0 0 1 235,150" fill="none" stroke="var(--teal-solid)" stroke-width="14" stroke-linecap="round" stroke-dasharray="330" stroke-dashoffset="165" style="transition:stroke-dashoffset 0.2s, stroke 0.2s;"/>
+      <line id="needle" x1="130" y1="150" x2="130" y2="60" stroke="var(--text)" stroke-width="3.5" stroke-linecap="round" style="transform-origin:130px 150px; transition:transform 0.2s;"/>
+      <circle cx="130" cy="150" r="7" fill="var(--text)"/>
+      <text id="typeOut" x="130" y="115" text-anchor="middle" font-size="16" font-weight="600" fill="var(--text)">中速迭代</text>
+      <text x="10" y="165" font-size="12" fill="var(--text-muted)">深思</text>
+      <text x="220" y="165" font-size="12" fill="var(--text-muted)">快閃</text>
+    </svg>
+  </div>
+  <p class="summary-line" id="summaryLine" style="color:var(--amber-solid)">資訊和時間都算中等，跑一輪就先小規模行動</p>
+
+  <div class="loop-row">
+    <svg width="170" height="130" viewBox="0 0 200 150" aria-hidden="true">
+      <path id="loopPath" d="M50,30 H150 Q170,30 170,50 V100 Q170,120 150,120 H50 Q30,120 30,100 V50 Q30,30 50,30 Z" fill="none" stroke="var(--border)" stroke-width="2"/>
+      <circle cx="50" cy="30" r="4" fill="var(--teal-solid)"/><text x="18" y="20" font-size="11" fill="var(--text-secondary)">觀察</text>
+      <circle cx="150" cy="30" r="4" fill="var(--teal-solid)"/><text x="140" y="20" font-size="11" fill="var(--text-secondary)">定向</text>
+      <circle cx="150" cy="120" r="4" fill="var(--teal-solid)"/><text x="140" y="140" font-size="11" fill="var(--text-secondary)">決策</text>
+      <circle cx="50" cy="120" r="4" fill="var(--teal-solid)"/><text x="24" y="140" font-size="11" fill="var(--text-secondary)">行動</text>
+      <circle r="5" fill="var(--amber-solid)">
+        <animateMotion id="motion" dur="2.5s" repeatCount="indefinite">
+          <mpath href="#loopPath"/>
+        </animateMotion>
+      </circle>
+    </svg>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><i class="ti ti-clock"></i><div><p class="metric-label">分析預算</p><p class="metric-value" id="budgetOut">1-2小時</p></div></div>
+    <div class="metric"><i class="ti ti-target"></i><div><p class="metric-label">下注門檻</p><p class="metric-value" id="thresholdOut">70%</p></div></div>
+  </div>
+
+  <div class="warn" id="warnBox">
+    <i class="ti ti-alert-triangle" style="margin-top:1px"></i>
+    <span>情緒涉入度偏高，留意這一輪的「多想」是在降低風險，還是在降低焦慮。</span>
+  </div>
+
+  <div class="mode-card">
+    <div class="icon-circle" style="background:var(--teal-bg);color:var(--teal-text);"><i class="ti ti-hierarchy-2"></i></div>
+    <div><p class="mode-title">系統思考</p><p class="mode-text" id="systemText">跑一輪後就小規模行動，用結果修正模型</p></div>
+  </div>
+  <div class="mode-card">
+    <div class="icon-circle" style="background:var(--amber-bg);color:var(--amber-text);"><i class="ti ti-percentage"></i></div>
+    <div><p class="mode-title">機率思考</p><p class="mode-text" id="probText">達到六到七成信心就出手，不等滿分把握</p></div>
+  </div>
+  <div class="mode-card">
+    <div class="icon-circle" style="background:var(--coral-bg);color:var(--coral-text);"><i class="ti ti-swords"></i></div>
+    <div><p class="mode-title">對抗思考</p><p class="mode-text" id="advText">用計時器打斷過度分析，時間到了強制決策</p></div>
+  </div>
+
+  <footer>
+    <p>加到主畫面，隨時打開就能用</p>
+  </footer>
+</div>
+
+<script>
+const content = {
+  slow: {
+    type:'慢速深度', budget:'數天至數週（設截止日）', summary:'可逆性低、風險高，值得花時間想清楚再動手',
+    system:'深挖心智模型是否過時，定期設回顧點檢視假設',
+    prob:'用機率語言列出各方案信心值，門檻設高一點才下注',
+    adv:'設定硬性截止日，對抗自己想無限延後的完美主義'
+  },
+  mid: {
+    type:'中速迭代', budget:'1-2小時結構化思考', summary:'資訊和時間都算中等，跑一輪就先小規模行動',
+    system:'跑一輪後就小規模行動，用結果修正模型',
+    prob:'達到六到七成信心就出手，不等滿分把握',
+    adv:'用計時器打斷過度分析，時間到了強制進入決策'
+  },
+  fast: {
+    type:'快速循環', budget:'5-15分鐘', summary:'錯了也能改，資訊夠了就動手比多想更划算',
+    system:'行動本身就是蒐集資訊的手段，別想太多再動手',
+    prob:'選項機率一旦領先就立刻行動，別再加碼分析',
+    adv:'問自己：多想的這一步，是降低風險還是降低焦慮？'
+  }
+};
+
+const tierColor = {
+  slow: getComputedStyle(document.documentElement) ? '--teal-solid' : '--teal-solid',
+  mid: '--amber-solid',
+  fast: '--coral-solid'
+};
+
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function paintSlider(el){
+  const v = el.value;
+  const color = cssVar('--teal-solid');
+  el.style.background = 'linear-gradient(to right,' + color + ' 0%,' + color + ' ' + v + '%,var(--border) ' + v + '%,var(--border) 100%)';
+}
+
+const els = {
+  rev: document.getElementById('rev'),
+  urg: document.getElementById('urg'),
+  info: document.getElementById('info'),
+  emo: document.getElementById('emo'),
+};
+
+function update(){
+  const rev = +els.rev.value, urg = +els.urg.value, info = +els.info.value, emo = +els.emo.value;
+  const speed = Math.round((rev + urg + info) / 3);
+  const tier = speed < 34 ? 'slow' : speed < 67 ? 'mid' : 'fast';
+  const c = content[tier];
+  const color = cssVar(tierColor[tier]);
+
+  document.getElementById('typeOut').textContent = c.type;
+  document.getElementById('budgetOut').textContent = c.budget;
+  document.getElementById('systemText').textContent = c.system;
+  document.getElementById('probText').textContent = c.prob;
+  document.getElementById('advText').textContent = c.adv;
+
+  const summaryEl = document.getElementById('summaryLine');
+  summaryEl.textContent = c.summary;
+  summaryEl.style.color = color;
+
+  const threshold = Math.round(Math.min(90, Math.max(55, 90 - speed * 0.4)));
+  document.getElementById('thresholdOut').textContent = threshold + '%';
+
+  const angle = -90 + speed * 1.8;
+  document.getElementById('needle').style.transform = 'rotate(' + angle + 'deg)';
+
+  const offset = Math.round(330 - (speed / 100) * 330);
+  const arc = document.getElementById('arcFill');
+  arc.setAttribute('stroke-dashoffset', offset);
+  arc.setAttribute('stroke', color);
+
+  const dur = (4 - (speed / 100) * 3).toFixed(1) + 's';
+  const motion = document.getElementById('motion');
+  motion.setAttribute('dur', dur);
+  try { motion.beginElement(); } catch (e) {}
+
+  document.getElementById('warnBox').classList.toggle('show', emo > 60);
+
+  Object.values(els).forEach(paintSlider);
+}
+
+Object.values(els).forEach(el => el.addEventListener('input', update));
+update();
+</script>
+</body>
+</html>
