@@ -5,249 +5,786 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0F6E56">
+<meta name="theme-color" content="#F6E7CE">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>決策羅盤</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<title>羅盤 2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<!--
+═══════════════════════════════════════════════════════════════
+ 羅盤 2.0 v1 — 維護者備忘(給未來的婉瑜)
+───────────────────────────────────────────────────────────────
+ 畫面用白話,這裡記每個區塊對應的修煉課題(出處:HD 命盤分析):
+   ⚡ 信號四鈕      → #3 憤怒=信號 / #10 低谷不行動 / #4 防過勞(沒電了)
+   🌱 隔日反思      → #2 行動前告知(延後到氣消才問,呼應「當下無真相」)
+   🛡️ 先想好退路    → #6 最壞情境三格(上行偏誤校正:Ego×26×35/51×32)
+   📣 先跟誰說      → #2 告知策略(顯示者)
+   🌗 三張臉採樣    → #1 情緒權威:高/中/低跨情緒溫度採樣,一致才動
+   權威覆寫觸發     → 不可逆(rev≤34)且高情緒(emo≥66),兩桿到頂才觸發
+   CFG.waveDays=3   → ⚠️ 佔位值。實測自己的波長後改這裡(v2 會自動計算)
+ 資料:localStorage key 'compass2v1',結構見 load()。全部 try-catch。
+ 設計語言:「晨光紙上的天氣」— 暖杏底、右上角常駐暖陽、襯線標題。
+ 圖示:全 emoji,不依賴外部 CDN(tabler 曾在手機上載入失敗)。
+═══════════════════════════════════════════════════════════════
+-->
 <style>
   :root{
-    --bg:#F7F5EF; --surface:#FFFFFF; --surface-2:#F0EEE6; --border:#E3DFD3;
-    --text:#2B2B27; --text-secondary:#5C5A50; --text-muted:#8B8878;
-    --teal-bg:#E1F5EE; --teal-text:#085041; --teal-solid:#1D9E75;
-    --amber-bg:#FAEEDA; --amber-text:#633806; --amber-solid:#BA7517;
-    --coral-bg:#FAECE7; --coral-text:#712B13; --coral-solid:#D85A30;
-    --warn-bg:#FAEEDA; --warn-text:#633806;
+    --bg:#FAF1E3; --bg-glow:#F6DFC0;
+    --surface:#FFFCF5; --surface-2:#F5EAD7; --border:#EADCC2;
+    --text:#3B2F26; --text-secondary:#6E5C4B; --text-muted:#A08A72;
+    --teal-bg:#E3F2E9; --teal-text:#0E5A42; --teal-solid:#1E9A70;
+    --amber-bg:#FBEBD0; --amber-text:#6B430E; --amber-solid:#C9862D;
+    --coral-bg:#FAE7DE; --coral-text:#7A3A22; --coral-solid:#D96A3B;
+    --shadow:0 2px 10px rgba(140,95,45,.10);
+    --shadow-lift:0 4px 16px rgba(140,95,45,.14);
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#1B1B18; --surface:#242420; --surface-2:#2C2C27; --border:#3C3B34;
-      --text:#EDEBE3; --text-secondary:#B5B2A5; --text-muted:#83816F;
-      --teal-bg:#085041; --teal-text:#9FE1CB; --teal-solid:#5DCAA5;
-      --amber-bg:#633806; --amber-text:#FAC775; --amber-solid:#EF9F27;
-      --coral-bg:#712B13; --coral-text:#F5C4B3; --coral-solid:#F0997B;
-      --warn-bg:#633806; --warn-text:#FAC775;
+      --bg:#241C15; --bg-glow:#3A2A1A;
+      --surface:#2E241B; --surface-2:#382C20; --border:#4A3A2A;
+      --text:#F2E7D6; --text-secondary:#C7B49C; --text-muted:#8F7B63;
+      --teal-bg:#0E5A42; --teal-text:#A8E4CC; --teal-solid:#5BC9A2;
+      --amber-bg:#6B430E; --amber-text:#F6CE8B; --amber-solid:#E8A94A;
+      --coral-bg:#7A3A22; --coral-text:#F6C9B4; --coral-solid:#EF9469;
+      --shadow:0 2px 10px rgba(0,0,0,.35);
+      --shadow-lift:0 4px 16px rgba(0,0,0,.4);
     }
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  body{
-    margin:0; background:var(--bg); color:var(--text);
+  body{margin:0;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI",sans-serif;
     padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
-  }
-  .wrap{max-width:520px;margin:0 auto;padding:1.5rem 1.25rem 3rem;}
-  header{margin-bottom:1.75rem;}
-  header p.eyebrow{font-size:12px;color:var(--text-muted);letter-spacing:0.02em;margin:0 0 4px;}
-  h1{font-size:22px;font-weight:600;margin:0 0 6px;}
-  header p.sub{font-size:14px;color:var(--text-secondary);margin:0;line-height:1.6;}
+    min-height:100vh;position:relative;}
+  body::before{content:'';position:fixed;top:-140px;right:-140px;width:380px;height:380px;
+    border-radius:50%;pointer-events:none;z-index:0;
+    background:radial-gradient(circle, var(--bg-glow) 0%, transparent 68%);}
+  .wrap{max-width:520px;margin:0 auto;padding:1.5rem 1.25rem 6.5rem;position:relative;z-index:1;}
 
+  h1{font-family:"Noto Serif TC",serif;font-size:30px;font-weight:700;margin:0 0 12px;letter-spacing:.01em;}
+  .eyebrow{font-size:13.5px;color:var(--text-muted);margin:0 0 4px;letter-spacing:.14em;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;
+    padding:1.1rem 1.2rem;margin-bottom:14px;box-shadow:var(--shadow);}
+  .card h3{font-family:"Noto Serif TC",serif;font-size:18px;font-weight:600;margin:0 0 10px;
+    display:flex;align-items:center;gap:8px;}
+  .card p{font-size:15.5px;color:var(--text-secondary);line-height:1.65;margin:0 0 6px;}
+  .hint{font-size:13.5px;color:var(--text-muted);line-height:1.6;}
+
+  /* ── 決定頁:原羅盤 ── */
   .slider-block{margin-bottom:1.4rem;}
-  .slider-title{font-size:14px;color:var(--text-secondary);margin-bottom:10px;line-height:1.5;}
-  input[type=range]{
-    width:100%; -webkit-appearance:none; appearance:none; height:6px;
-    border-radius:3px; outline:none; margin:0; transition:background 0.15s;
-  }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none; width:26px; height:26px; border-radius:50%;
-    background:var(--surface); cursor:pointer; border:3px solid var(--teal-solid);
-    box-shadow:0 1px 4px rgba(0,0,0,0.25); margin-top:-1px;
-  }
-  input[type=range]::-moz-range-thumb{
-    width:26px; height:26px; border-radius:50%; background:var(--surface);
-    cursor:pointer; border:3px solid var(--teal-solid); box-shadow:0 1px 4px rgba(0,0,0,0.25);
-  }
+  .slider-title{font-size:15.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;}
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;
+    border-radius:3px;outline:none;margin:0;transition:background .15s;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;
+    border-radius:50%;background:var(--surface);cursor:pointer;border:3px solid var(--amber-solid);
+    box-shadow:0 1px 4px rgba(0,0,0,.25);margin-top:-1px;}
+  input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;
+    background:var(--surface);cursor:pointer;border:3px solid var(--amber-solid);
+    box-shadow:0 1px 4px rgba(0,0,0,.25);}
   input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:transparent;}
-  .slider-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-top:6px;}
-
-  .gauge-wrap{display:flex;flex-direction:column;align-items:center;margin:0.5rem 0 1.5rem;}
-  .summary-line{font-size:15px;font-weight:600;text-align:center;margin:0.25rem 0 1.25rem;line-height:1.6;padding:0 0.5rem;transition:color 0.2s;}
-  .loop-row{display:flex;justify-content:center;margin-bottom:1.25rem;}
-
-  .metrics{display:flex;gap:10px;margin-bottom:1.1rem;}
-  .metric{flex:1;background:var(--surface-2);border-radius:12px;padding:0.85rem 0.7rem;min-width:0;display:flex;align-items:center;gap:8px;}
-  .metric i{font-size:16px;color:var(--text-muted);flex-shrink:0;}
-  .metric-label{font-size:11px;color:var(--text-muted);margin:0 0 3px;}
-  .metric-value{font-size:15px;font-weight:600;margin:0;line-height:1.3;}
-
-  .warn{display:none;gap:10px;align-items:flex-start;background:var(--warn-bg);color:var(--warn-text);border-radius:12px;padding:0.9rem 1rem;font-size:13px;line-height:1.6;margin-bottom:1.25rem;}
+  .slider-labels{display:flex;justify-content:space-between;font-size:13.5px;color:var(--text-muted);margin-top:6px;}
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;margin:.5rem 0 1.2rem;}
+  .summary-line{font-size:17px;font-weight:600;text-align:center;margin:.25rem 0 1.1rem;
+    line-height:1.6;padding:0 .5rem;transition:color .2s;}
+  .loop-row{display:flex;justify-content:center;margin-bottom:1.1rem;}
+  .metrics{display:flex;gap:10px;margin-bottom:1rem;}
+  .metric{flex:1;background:var(--surface-2);border-radius:12px;padding:.85rem .7rem;min-width:0;
+    display:flex;align-items:center;gap:8px;}
+  .metric .m-em{font-size:20px;flex-shrink:0;}
+  .metric-label{font-size:13.5px;color:var(--text-muted);margin:0 0 3px;}
+  .metric-value{font-size:16px;font-weight:600;margin:0;line-height:1.3;}
+  .warn{display:none;gap:10px;align-items:flex-start;background:var(--amber-bg);color:var(--amber-text);
+    border-radius:12px;padding:.9rem 1rem;font-size:15px;line-height:1.6;margin-bottom:1.1rem;}
   .warn.show{display:flex;}
 
-  .mode-card{display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.1rem;margin-bottom:10px;}
-  .icon-circle{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
-  .mode-title{font-weight:600;font-size:14px;margin:0 0 3px;}
-  .mode-text{font-size:13px;color:var(--text-secondary);margin:0;line-height:1.6;}
+  /* 權威覆寫橫幅 + 開始追蹤 */
+  .authbox{display:none;flex-direction:column;gap:8px;background:var(--coral-bg);color:var(--coral-text);
+    border:1px solid var(--coral-solid);border-radius:14px;padding:1rem 1.1rem;margin-bottom:1.1rem;}
+  .authbox.show{display:flex;}
+  .authbox-head{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;}
+  .authbox p{font-size:15px;line-height:1.6;margin:0;color:inherit;}
+  .startrow{display:flex;gap:8px;margin-top:4px;}
+  .startrow input{flex:1;border:1.5px solid var(--coral-solid);border-radius:10px;
+    padding:.55rem .7rem;font-size:15px;font-family:inherit;background:var(--surface);color:var(--text);}
+  .btn{border:none;border-radius:10px;padding:.55rem .95rem;font-size:15px;font-weight:600;
+    cursor:pointer;font-family:inherit;box-shadow:var(--shadow);}
+  .btn-coral{background:var(--coral-solid);color:#fff;}
+  .btn-teal{background:var(--teal-solid);color:#fff;}
+  .btn-ghost{background:var(--surface-2);color:var(--text-secondary);box-shadow:none;}
 
-  footer{text-align:center;margin-top:1.5rem;}
-  footer p{font-size:12px;color:var(--text-muted);margin:0;}
+  /* 追蹤中的決定 */
+  .fold{border-left:3px solid var(--coral-solid);padding-left:.9rem;margin-top:.95rem;}
+  .fold-title{font-size:15px;font-weight:600;color:var(--coral-text);margin:0 0 8px;}
+  textarea.typein{width:100%;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);
+    padding:.6rem .75rem;font-size:15px;color:var(--text);font-family:inherit;line-height:1.55;
+    resize:vertical;min-height:64px;}
+  textarea.typein::placeholder{color:var(--text-muted);}
+  .bear-row{display:flex;gap:10px;margin-top:10px;}
+  .bearbtn{flex:1;border:2px solid var(--border);background:var(--surface);border-radius:16px;
+    padding:.85rem .4rem;display:flex;flex-direction:column;align-items:center;gap:5px;
+    font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--text-secondary);
+    box-shadow:var(--shadow);transition:transform .12s;}
+  .bearbtn:active{transform:scale(.97);}
+  .bearbtn .em{font-size:32px;line-height:1;}
+  .bearbtn.on-yes{border-color:var(--teal-solid);background:var(--teal-bg);color:var(--teal-text);}
+  .bearbtn.on-no{border-color:var(--coral-solid);background:var(--coral-bg);color:var(--coral-text);}
+  .people{display:flex;gap:14px;margin-top:6px;flex-wrap:wrap;}
+  .person{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:15px;
+    color:var(--text-secondary);cursor:pointer;border:none;background:none;font-family:inherit;padding:0;}
+  .avatar{width:54px;height:54px;border-radius:50%;background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;font-size:24px;position:relative;
+    box-shadow:var(--shadow);}
+  .avatar.done{background:var(--teal-bg);}
+  .avatar.done::after{content:'✓';position:absolute;right:-2px;bottom:-2px;width:19px;height:19px;
+    border-radius:50%;background:var(--teal-solid);color:#fff;font-size:12px;
+    display:flex;align-items:center;justify-content:center;}
+  .avatar.add{border:2px dashed var(--border);background:none;color:var(--text-muted);
+    font-size:20px;box-shadow:none;}
+  .moods{display:flex;gap:12px;margin-top:6px;}
+  .mood{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;
+    border:none;background:none;font-family:inherit;cursor:pointer;padding:0;}
+  .mood .face{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:32px;background:var(--surface-2);box-shadow:var(--shadow);}
+  .mood.answered .face{background:linear-gradient(160deg,var(--amber-bg),var(--surface));}
+  .mood .ans{font-size:13.5px;font-weight:600;border-radius:999px;padding:3px 11px;}
+  .mood.answered .ans{background:var(--teal-bg);color:var(--teal-text);}
+  .mood.pending .ans{background:var(--surface-2);color:var(--text-muted);}
+  .answer-row{display:none;gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap;}
+  .answer-row.show{display:flex;}
+  .verdict{display:none;border-radius:12px;padding:.85rem 1rem;font-size:15.5px;font-weight:600;
+    text-align:center;margin-top:12px;line-height:1.6;}
+  .verdict.show{display:block;}
+  .verdict.go{background:var(--teal-bg);color:var(--teal-text);}
+  .verdict.hold{background:var(--surface-2);color:var(--text-secondary);}
+  .decide-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end;}
+
+  /* ── 信號頁 ── */
+  .siggrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .sigbtn{border:none;border-radius:22px;padding:1.6rem .5rem 1.3rem;font-size:17px;font-weight:600;
+    display:flex;flex-direction:column;align-items:center;gap:9px;cursor:pointer;font-family:inherit;
+    box-shadow:var(--shadow-lift);transition:transform .12s;}
+  .sigbtn:active{transform:scale(.96);}
+  .sigbtn .em{font-size:46px;line-height:1;filter:drop-shadow(0 2px 3px rgba(140,95,45,.18));}
+  .sig-anger{background:linear-gradient(165deg,var(--coral-bg),var(--surface));color:var(--coral-text);}
+  .sig-low{background:linear-gradient(165deg,var(--surface-2),var(--surface));color:var(--text-secondary);}
+  .sig-high{background:linear-gradient(165deg,var(--amber-bg),var(--surface));color:var(--amber-text);}
+  .sig-drain{background:linear-gradient(165deg,var(--teal-bg),var(--surface));color:var(--teal-text);}
+  .toast{display:none;background:var(--teal-bg);color:var(--teal-text);border-radius:12px;
+    padding:.7rem .95rem;font-size:15px;text-align:center;margin-bottom:14px;box-shadow:var(--shadow);}
+  .toast.show{display:block;}
+
+  /* 橋接卡:有決定在等這個心情時出現 */
+  .bridge{display:none;flex-direction:column;gap:10px;background:var(--amber-bg);color:var(--amber-text);
+    border-radius:14px;padding:1rem 1.1rem;margin-bottom:14px;box-shadow:var(--shadow);}
+  .bridge.show{display:flex;}
+  .bridge p{margin:0;font-size:15.5px;line-height:1.65;color:inherit;}
+  .bridge-btns{display:flex;gap:8px;flex-wrap:wrap;}
+
+  .timeline{list-style:none;margin:0;padding:0;}
+  .timeline li{display:flex;gap:10px;align-items:baseline;font-size:15px;
+    color:var(--text-secondary);padding:.55rem 0;border-bottom:1px solid var(--border);}
+  .timeline li:last-child{border-bottom:none;}
+  .timeline .t{color:var(--text-muted);font-size:13.5px;flex-shrink:0;width:96px;}
+  .timeline .em{font-size:19px;flex-shrink:0;}
+  .timeline .body{flex:1;min-width:0;}
+  .timeline .note-add{border:none;background:none;color:var(--text-muted);font-size:13.5px;
+    cursor:pointer;font-family:inherit;padding:0;}
+  .sprout{display:flex;gap:6px;align-items:flex-start;margin-top:4px;font-size:13.5px;
+    color:var(--text-muted);line-height:1.6;}
+  .sprout button{border:none;background:var(--surface-2);border-radius:999px;padding:2px 10px;
+    font-size:12.5px;color:var(--text-secondary);cursor:pointer;font-family:inherit;flex-shrink:0;}
+  .empty{text-align:center;color:var(--text-muted);font-size:15px;padding:1rem 0;line-height:1.7;}
+  .inline-edit{display:flex;gap:6px;margin-top:4px;}
+  .inline-edit input{flex:1;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);
+    padding:.4rem .6rem;font-size:15px;color:var(--text);font-family:inherit;min-width:0;}
+  .inline-edit button{border:none;border-radius:8px;background:var(--teal-solid);color:#fff;
+    padding:.4rem .8rem;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;}
+
+  /* ── 回顧頁(v1 極簡) ── */
+  .statrow{display:flex;gap:10px;}
+  .stat{flex:1;background:var(--surface-2);border-radius:12px;padding:.8rem .5rem;text-align:center;}
+  .stat .em{font-size:26px;}
+  .stat .n{font-family:"Noto Serif TC",serif;font-size:24px;font-weight:700;margin:2px 0 0;}
+  .stat .lbl{font-size:13.5px;color:var(--text-muted);}
+
+  /* ── 分頁列 ── */
+  .tabbar{position:fixed;bottom:0;left:0;right:0;
+    background:color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:2;}
+  .tabbar button{flex:1;border:none;background:none;padding:.75rem 0 .6rem;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:16px;font-weight:500;color:var(--text-muted);font-family:inherit;}
+  .tabbar .tab-em{font-size:26px;line-height:1;}
+  .tabbar button.active{color:var(--amber-solid);font-weight:600;}
+
+  .page{display:none;}
+  .page.active{display:block;}
+  footer{text-align:center;margin-top:1.2rem;}
+  footer p{font-size:13.5px;color:var(--text-muted);margin:0;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <p class="eyebrow">OODA × 機率思考</p>
-    <h1>決策羅盤</h1>
-    <p class="sub">拖動下面四個滑桿，描述你正面對的決定，立刻看到建議的節奏、分析預算與下注門檻。</p>
-  </header>
 
-  <div class="slider-block">
-    <div class="slider-title">可逆性：這個決定做錯了，回頭的成本高嗎？</div>
-    <input type="range" id="rev" min="0" max="100" value="50" step="1">
-    <div class="slider-labels"><span>不可逆，代價高</span><span>完全可逆，隨時改</span></div>
-  </div>
-  <div class="slider-block">
-    <div class="slider-title">時間壓力：環境變化的速度</div>
-    <input type="range" id="urg" min="0" max="100" value="50" step="1">
-    <div class="slider-labels"><span>不急，可以等</span><span>非常急迫</span></div>
-  </div>
-  <div class="slider-block">
-    <div class="slider-title">資訊完整度：現在手上的資訊夠嗎？</div>
-    <input type="range" id="info" min="0" max="100" value="50" step="1">
-    <div class="slider-labels"><span>資訊很少</span><span>資訊足夠</span></div>
-  </div>
-  <div class="slider-block">
-    <div class="slider-title">情緒涉入度：這件事會不會讓你特別怕錯？</div>
-    <input type="range" id="emo" min="0" max="100" value="50" step="1">
-    <div class="slider-labels"><span>很平常</span><span>很在意，會焦慮</span></div>
-  </div>
+  <!-- ══════════ 頁 1:信號(每天用,預設頁) ══════════ -->
+  <div class="page active" id="page-signal">
+    <p class="eyebrow">羅盤 2.0</p>
+    <h1>⚡ 信號</h1>
+    <div class="toast" id="toast"></div>
 
-  <div class="gauge-wrap">
-    <svg width="260" height="170" viewBox="0 0 260 170" aria-hidden="true">
-      <path d="M25,150 A105,105 0 0 1 235,150" fill="none" stroke="var(--border)" stroke-width="14" stroke-linecap="round"/>
-      <path id="arcFill" d="M25,150 A105,105 0 0 1 235,150" fill="none" stroke="var(--teal-solid)" stroke-width="14" stroke-linecap="round" stroke-dasharray="330" stroke-dashoffset="165" style="transition:stroke-dashoffset 0.2s, stroke 0.2s;"/>
-      <line id="needle" x1="130" y1="150" x2="130" y2="60" stroke="var(--text)" stroke-width="3.5" stroke-linecap="round" style="transform-origin:130px 150px; transition:transform 0.2s;"/>
-      <circle cx="130" cy="150" r="7" fill="var(--text)"/>
-      <text id="typeOut" x="130" y="115" text-anchor="middle" font-size="16" font-weight="600" fill="var(--text)">中速迭代</text>
-      <text x="10" y="165" font-size="12" fill="var(--text-muted)">深思</text>
-      <text x="220" y="165" font-size="12" fill="var(--text-muted)">快閃</text>
-    </svg>
-  </div>
-  <p class="summary-line" id="summaryLine" style="color:var(--amber-solid)">資訊和時間都算中等，跑一輪就先小規模行動</p>
+    <div class="bridge" id="bridgeBox">
+      <p id="bridgeText"></p>
+      <div class="bridge-btns">
+        <button class="btn btn-teal" onclick="bridgeAnswer('do')">傾向做</button>
+        <button class="btn btn-coral" onclick="bridgeAnswer('skip')">傾向不做</button>
+        <button class="btn btn-ghost" onclick="bridgeAnswer('unsure')">還說不準</button>
+        <button class="btn btn-ghost" onclick="hideBridge()">現在不想想</button>
+      </div>
+    </div>
 
-  <div class="loop-row">
-    <svg width="170" height="130" viewBox="0 0 200 150" aria-hidden="true">
-      <path id="loopPath" d="M50,30 H150 Q170,30 170,50 V100 Q170,120 150,120 H50 Q30,120 30,100 V50 Q30,30 50,30 Z" fill="none" stroke="var(--border)" stroke-width="2"/>
-      <circle cx="50" cy="30" r="4" fill="var(--teal-solid)"/><text x="18" y="20" font-size="11" fill="var(--text-secondary)">觀察</text>
-      <circle cx="150" cy="30" r="4" fill="var(--teal-solid)"/><text x="140" y="20" font-size="11" fill="var(--text-secondary)">定向</text>
-      <circle cx="150" cy="120" r="4" fill="var(--teal-solid)"/><text x="140" y="140" font-size="11" fill="var(--text-secondary)">決策</text>
-      <circle cx="50" cy="120" r="4" fill="var(--teal-solid)"/><text x="24" y="140" font-size="11" fill="var(--text-secondary)">行動</text>
-      <circle r="5" fill="var(--amber-solid)">
-        <animateMotion id="motion" dur="2.5s" repeatCount="indefinite">
-          <mpath href="#loopPath"/>
-        </animateMotion>
-      </circle>
-    </svg>
+    <div class="siggrid">
+      <button class="sigbtn sig-anger" onclick="logSignal('anger')"><span class="em">🔥</span>生氣</button>
+      <button class="sigbtn sig-low" onclick="logSignal('low')"><span class="em">🌧</span>心情差</button>
+      <button class="sigbtn sig-high" onclick="logSignal('high')"><span class="em">☀️</span>超興奮</button>
+      <button class="sigbtn sig-drain" onclick="logSignal('drain')"><span class="em">🪫</span>沒電了</button>
+    </div>
+
+    <div class="card">
+      <h3>🕰 最近</h3>
+      <ul class="timeline" id="timelineList"></ul>
+      <div class="empty" id="timelineEmpty">還沒有紀錄。<br>有感覺的時候,按一下就好。</div>
+    </div>
   </div>
 
-  <div class="metrics">
-    <div class="metric"><i class="ti ti-clock"></i><div><p class="metric-label">分析預算</p><p class="metric-value" id="budgetOut">1-2小時</p></div></div>
-    <div class="metric"><i class="ti ti-target"></i><div><p class="metric-label">下注門檻</p><p class="metric-value" id="thresholdOut">70%</p></div></div>
+  <!-- ══════════ 頁 2:決定(大事才用) ══════════ -->
+  <div class="page" id="page-decide">
+    <p class="eyebrow">羅盤 2.0</p>
+    <h1>📍 決定</h1>
+
+    <div class="card">
+      <div class="slider-block">
+        <div class="slider-title">可逆性:這個決定做錯了,回頭的成本高嗎?</div>
+        <input type="range" id="rev" min="0" max="100" value="50" step="1">
+        <div class="slider-labels"><span>不可逆,代價高</span><span>完全可逆,隨時改</span></div>
+      </div>
+      <div class="slider-block">
+        <div class="slider-title">時間壓力:環境變化的速度</div>
+        <input type="range" id="urg" min="0" max="100" value="50" step="1">
+        <div class="slider-labels"><span>不急,可以等</span><span>非常急迫</span></div>
+      </div>
+      <div class="slider-block">
+        <div class="slider-title">資訊完整度:現在手上的資訊夠嗎?</div>
+        <input type="range" id="info" min="0" max="100" value="50" step="1">
+        <div class="slider-labels"><span>資訊很少</span><span>資訊足夠</span></div>
+      </div>
+      <div class="slider-block">
+        <div class="slider-title">情緒涉入度:這件事會不會讓你特別怕錯?</div>
+        <input type="range" id="emo" min="0" max="100" value="50" step="1">
+        <div class="slider-labels"><span>很平常</span><span>很在意,會焦慮</span></div>
+      </div>
+
+      <div class="gauge-wrap">
+        <svg width="260" height="170" viewBox="0 0 260 170" aria-hidden="true">
+          <path d="M25,150 A105,105 0 0 1 235,150" fill="none" stroke="var(--border)" stroke-width="14" stroke-linecap="round"/>
+          <path id="arcFill" d="M25,150 A105,105 0 0 1 235,150" fill="none" stroke="var(--amber-solid)" stroke-width="14" stroke-linecap="round" stroke-dasharray="330" stroke-dashoffset="165" style="transition:stroke-dashoffset .2s, stroke .2s;"/>
+          <line id="needle" x1="130" y1="150" x2="130" y2="60" stroke="var(--text)" stroke-width="3.5" stroke-linecap="round" style="transform-origin:130px 150px; transition:transform .2s;"/>
+          <circle cx="130" cy="150" r="7" fill="var(--text)"/>
+          <text id="typeOut" x="130" y="115" text-anchor="middle" font-size="16" font-weight="600" fill="var(--text)">中速迭代</text>
+          <text x="10" y="165" font-size="12" fill="var(--text-muted)">深思</text>
+          <text x="220" y="165" font-size="12" fill="var(--text-muted)">快閃</text>
+        </svg>
+      </div>
+      <p class="summary-line" id="summaryLine"></p>
+
+      <div class="loop-row">
+        <svg width="170" height="130" viewBox="0 0 200 150" aria-hidden="true">
+          <path id="loopPath" d="M50,30 H150 Q170,30 170,50 V100 Q170,120 150,120 H50 Q30,120 30,100 V50 Q30,30 50,30 Z" fill="none" stroke="var(--border)" stroke-width="2"/>
+          <circle cx="50" cy="30" r="4" fill="var(--amber-solid)"/><text x="18" y="20" font-size="11" fill="var(--text-secondary)">觀察</text>
+          <circle cx="150" cy="30" r="4" fill="var(--amber-solid)"/><text x="140" y="20" font-size="11" fill="var(--text-secondary)">定向</text>
+          <circle cx="150" cy="120" r="4" fill="var(--amber-solid)"/><text x="140" y="140" font-size="11" fill="var(--text-secondary)">決策</text>
+          <circle cx="50" cy="120" r="4" fill="var(--amber-solid)"/><text x="24" y="140" font-size="11" fill="var(--text-secondary)">行動</text>
+          <circle r="5" fill="var(--coral-solid)">
+            <animateMotion id="motion" dur="2.5s" repeatCount="indefinite"><mpath href="#loopPath"/></animateMotion>
+          </circle>
+        </svg>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><span class="m-em">⏳</span><div><p class="metric-label">分析預算</p><p class="metric-value" id="budgetOut"></p></div></div>
+        <div class="metric"><span class="m-em">🎯</span><div><p class="metric-label">下注門檻</p><p class="metric-value" id="thresholdOut"></p></div></div>
+      </div>
+
+      <div class="warn" id="warnBox">
+        <span style="font-size:18px">⚠️</span>
+        <span>情緒涉入度偏高,留意這一輪的「多想」是在降低風險,還是在降低焦慮。</span>
+      </div>
+
+      <div class="authbox" id="authBox">
+        <div class="authbox-head"><span>🕯</span><span>這是件大事,交給心裡的節奏</span></div>
+        <p>快閃和計時器先暫停。這種「不可逆+很在意」的決定,值得等心情走過一輪再定。</p>
+        <div class="startrow" id="startRow">
+          <input type="text" id="decTitle" placeholder="這個決定是…(例:買那間房)">
+          <button class="btn btn-coral" onclick="startDecision()">開始陪跑</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 追蹤中的決定(有 active decision 就顯示,與滑桿狀態無關) -->
+    <div class="card" id="trackCard" style="display:none">
+      <h3>🧭 <span id="trackTitle"></span></h3>
+
+      <div class="fold">
+        <p class="fold-title">🛡️ 先想好退路,走得更安心</p>
+        <textarea class="typein" id="worstIn" placeholder="最壞會怎樣?寫下來,它就沒那麼可怕了"></textarea>
+        <div class="bear-row">
+          <button class="bearbtn" id="bearYes" onclick="setBear(true)"><span class="em">💪</span>我承受得起</button>
+          <button class="bearbtn" id="bearNo" onclick="setBear(false)"><span class="em">🤔</span>現在還不行</button>
+        </div>
+      </div>
+
+      <div class="fold" style="border-color:var(--teal-solid)">
+        <p class="fold-title" style="color:var(--teal-text)">📣 動手前,先跟誰說</p>
+        <div class="people" id="peopleRow"></div>
+      </div>
+
+      <div class="fold" style="border-color:var(--amber-solid)">
+        <p class="fold-title" style="color:var(--amber-text)">🌗 不同心情下,各問自己一次</p>
+        <div class="moods" id="moodRow"></div>
+        <div class="answer-row" id="answerRow">
+          <button class="btn btn-teal" onclick="faceAnswer('do')">傾向做</button>
+          <button class="btn btn-coral" onclick="faceAnswer('skip')">傾向不做</button>
+          <button class="btn btn-ghost" onclick="faceAnswer('unsure')">還說不準</button>
+        </div>
+        <p class="hint" style="margin-top:8px;text-align:center" id="moodHint">😄 和 🌧 建議等那個心情真的來、按了信號再答,比較準</p>
+        <div class="verdict" id="verdictBox"></div>
+      </div>
+
+      <div class="decide-actions">
+        <button class="btn btn-ghost" onclick="dropDecision(this)">放下這個決定</button>
+        <button class="btn btn-teal" onclick="finishDecision(this)">已經決定了 ✓</button>
+      </div>
+    </div>
   </div>
 
-  <div class="warn" id="warnBox">
-    <i class="ti ti-alert-triangle" style="margin-top:1px"></i>
-    <span>情緒涉入度偏高，留意這一輪的「多想」是在降低風險，還是在降低焦慮。</span>
+  <!-- ══════════ 頁 3:回顧(v1 極簡,v2 開全) ══════════ -->
+  <div class="page" id="page-review">
+    <p class="eyebrow">羅盤 2.0</p>
+    <h1>🪞 回顧</h1>
+    <div class="card">
+      <h3>🌤 記錄累積中</h3>
+      <div class="statrow" id="statRow"></div>
+      <p class="hint" style="margin-top:10px">等記錄夠多,這裡會算出你的心情週期——「大決定要等幾天」就會用你自己的數字,不再用預設的 3 天。</p>
+    </div>
+    <div class="card">
+      <h3>🅿️ 還沒想清楚的事</h3>
+      <p class="hint">下一版會在這裡幫你放「不急著想通的問題」——故意不設期限。</p>
+    </div>
   </div>
 
-  <div class="mode-card">
-    <div class="icon-circle" style="background:var(--teal-bg);color:var(--teal-text);"><i class="ti ti-hierarchy-2"></i></div>
-    <div><p class="mode-title">系統思考</p><p class="mode-text" id="systemText">跑一輪後就小規模行動，用結果修正模型</p></div>
-  </div>
-  <div class="mode-card">
-    <div class="icon-circle" style="background:var(--amber-bg);color:var(--amber-text);"><i class="ti ti-percentage"></i></div>
-    <div><p class="mode-title">機率思考</p><p class="mode-text" id="probText">達到六到七成信心就出手，不等滿分把握</p></div>
-  </div>
-  <div class="mode-card">
-    <div class="icon-circle" style="background:var(--coral-bg);color:var(--coral-text);"><i class="ti ti-swords"></i></div>
-    <div><p class="mode-title">對抗思考</p><p class="mode-text" id="advText">用計時器打斷過度分析，時間到了強制決策</p></div>
-  </div>
+  <footer><p>加到主畫面,隨時打開就能用</p></footer>
+</div>
 
-  <footer>
-    <p>加到主畫面，隨時打開就能用</p>
-  </footer>
+<div class="tabbar">
+  <button class="active" id="tab-signal" onclick="go('signal',this)"><span class="tab-em">⚡</span>信號</button>
+  <button id="tab-decide" onclick="go('decide',this)"><span class="tab-em">📍</span>決定</button>
+  <button id="tab-review" onclick="go('review',this)"><span class="tab-em">🪞</span>回顧</button>
 </div>
 
 <script>
-const content = {
-  slow: {
-    type:'慢速深度', budget:'數天至數週（設截止日）', summary:'可逆性低、風險高，值得花時間想清楚再動手',
-    system:'深挖心智模型是否過時，定期設回顧點檢視假設',
-    prob:'用機率語言列出各方案信心值，門檻設高一點才下注',
-    adv:'設定硬性截止日，對抗自己想無限延後的完美主義'
-  },
-  mid: {
-    type:'中速迭代', budget:'1-2小時結構化思考', summary:'資訊和時間都算中等，跑一輪就先小規模行動',
-    system:'跑一輪後就小規模行動，用結果修正模型',
-    prob:'達到六到七成信心就出手，不等滿分把握',
-    adv:'用計時器打斷過度分析，時間到了強制進入決策'
-  },
-  fast: {
-    type:'快速循環', budget:'5-15分鐘', summary:'錯了也能改，資訊夠了就動手比多想更划算',
-    system:'行動本身就是蒐集資訊的手段，別想太多再動手',
-    prob:'選項機率一旦領先就立刻行動，別再加碼分析',
-    adv:'問自己：多想的這一步，是降低風險還是降低焦慮？'
-  }
+/* ═══════════ 純邏輯(無 DOM,可單獨測試) ═══════════ */
+/*PURE-START*/
+const CFG = {
+  revRiskMin: 66,   // 不可逆風險(=100-rev)門檻:rev ≤ 34 才算「不可逆端」
+  emoMin: 66,       // 情緒涉入門檻:emo ≥ 66 才算「很在意」
+  waveDays: 3       // ⚠️ 佔位值,實測波長後修改(v2 自動計算)
 };
 
-const tierColor = {
-  slow: getComputedStyle(document.documentElement) ? '--teal-solid' : '--teal-solid',
-  mid: '--amber-solid',
-  fast: '--coral-solid'
+const TIERS = {
+  slow:{type:'慢速深度',budget:'數天至數週(設截止日)',summary:'可逆性低、風險高,值得花時間想清楚再動手',
+    color:'--teal-solid'},
+  mid:{type:'中速迭代',budget:'1-2小時結構化思考',summary:'資訊和時間都算中等,跑一輪就先小規模行動',
+    color:'--amber-solid'},
+  fast:{type:'快速循環',budget:'5-15分鐘',summary:'錯了也能改,資訊夠了就動手比多想更划算',
+    color:'--coral-solid'},
+  wait:{type:'等波再定',budget:'≥ '+CFG.waveDays+' 天',summary:'這是件大事——交給心裡的節奏,等心情走過一輪再定',
+    color:'--coral-solid'}
 };
 
-function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-
-function paintSlider(el){
-  const v = el.value;
-  const color = cssVar('--teal-solid');
-  el.style.background = 'linear-gradient(to right,' + color + ' 0%,' + color + ' ' + v + '%,var(--border) ' + v + '%,var(--border) 100%)';
+// 權威覆寫判定:不可逆 且 高情緒,兩桿都到頂才觸發(單桿不觸發,避免誤觸)
+function isAuthority(rev, emo){
+  return (100 - rev) >= CFG.revRiskMin && emo >= CFG.emoMin;
 }
 
-const els = {
-  rev: document.getElementById('rev'),
-  urg: document.getElementById('urg'),
-  info: document.getElementById('info'),
-  emo: document.getElementById('emo'),
-};
-
-function update(){
-  const rev = +els.rev.value, urg = +els.urg.value, info = +els.info.value, emo = +els.emo.value;
+function computeTier(rev, urg, info, emo){
+  if (isAuthority(rev, emo)) return {tier:'wait', speed:0, threshold:null};
   const speed = Math.round((rev + urg + info) / 3);
   const tier = speed < 34 ? 'slow' : speed < 67 ? 'mid' : 'fast';
-  const c = content[tier];
-  const color = cssVar(tierColor[tier]);
-
-  document.getElementById('typeOut').textContent = c.type;
-  document.getElementById('budgetOut').textContent = c.budget;
-  document.getElementById('systemText').textContent = c.system;
-  document.getElementById('probText').textContent = c.prob;
-  document.getElementById('advText').textContent = c.adv;
-
-  const summaryEl = document.getElementById('summaryLine');
-  summaryEl.textContent = c.summary;
-  summaryEl.style.color = color;
-
   const threshold = Math.round(Math.min(90, Math.max(55, 90 - speed * 0.4)));
-  document.getElementById('thresholdOut').textContent = threshold + '%';
+  return {tier, speed, threshold};
+}
 
-  const angle = -90 + speed * 1.8;
-  document.getElementById('needle').style.transform = 'rotate(' + angle + 'deg)';
+// 三張臉裁決:全答且一致 → go/stop;有答但不一致 → mixed;未答完 → pending
+function sampleVerdict(samples){
+  const slots=['good','mid','low'];
+  const answers=slots.map(k=>samples[k] ? samples[k].a : null);
+  if (answers.some(a=>a===null)) return 'pending';
+  if (answers.every(a=>a==='do')) return 'go';
+  if (answers.every(a=>a==='skip')) return 'stop';
+  return 'mixed';
+}
+/*PURE-END*/
 
-  const offset = Math.round(330 - (speed / 100) * 330);
-  const arc = document.getElementById('arcFill');
-  arc.setAttribute('stroke-dashoffset', offset);
+/* ═══════════ 資料層(localStorage,全 try-catch) ═══════════ */
+const LS_KEY='compass2v1';
+let DB;
+function load(){
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(raw){ const d=JSON.parse(raw); if(d && d.v===1) return d; }
+  }catch(e){}
+  return {v:1, signals:[], decision:null};
+  // signals: [{t:epoch_ms, k:'anger'|'low'|'high'|'drain', note?, ref?}]
+  // decision: {title, worst, bear:null|true|false, people:[{name,done}],
+  //            samples:{good?,mid?,low?:{a:'do'|'skip'|'unsure',t}}, createdAt}
+}
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+  catch(e){ showToast('⚠️ 沒存成功——瀏覽器儲存空間可能滿了'); }
+}
+
+/* ═══════════ 共用 UI ═══════════ */
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+let toastTimer;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'), 2400);
+}
+function go(name, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  window.scrollTo(0,0);
+  if(name==='review') renderStats();
+}
+
+/* ═══════════ 信號頁 ═══════════ */
+// 課題對照:anger→#3 / low→#10 / drain→#4;句子=婉瑜親筆
+const SIG_META={
+  anger:{em:'🔥', label:'生氣',  say:'沒關係,氣完再說,不急'},
+  low:  {em:'🌧', label:'心情差', say:'今天很難吧?有什麼情緒我都陪著你'},
+  high: {em:'☀️', label:'超興奮', say:'這份興奮很珍貴!讓它醞釀一下會更香'},
+  drain:{em:'🪫', label:'沒電了', say:'好好休息,什麼都不管也可以'}
+};
+// 信號 → 三張臉的哪一格(橋接:#1 情緒權威採樣)
+const SIG_TO_SLOT={ high:'good', low:'low' };
+
+function logSignal(k){
+  DB.signals.push({t:Date.now(), k});
+  save();
+  showToast('收到 ✓ '+SIG_META[k].say);
+  renderTimeline();
+  maybeBridge(k);
+}
+
+/* 橋接:有決定在等這個心情 → 溫柔追問一次 */
+let bridgeSlot=null;
+function maybeBridge(k){
+  const slot=SIG_TO_SLOT[k];
+  if(!slot || !DB.decision || DB.decision.samples[slot]) return;
+  bridgeSlot=slot;
+  const moodWord = k==='high' ? '現在心情正好' : '現在心情不太好';
+  document.getElementById('bridgeText').textContent =
+    moodWord+'…要不要順便問問自己:「'+DB.decision.title+'」,這一刻的你傾向?';
+  document.getElementById('bridgeBox').classList.add('show');
+}
+function hideBridge(){
+  bridgeSlot=null;
+  document.getElementById('bridgeBox').classList.remove('show');
+}
+function bridgeAnswer(a){
+  if(bridgeSlot && DB.decision){
+    DB.decision.samples[bridgeSlot]={a, t:Date.now()};
+    save();
+    showToast('記下了 ✓ 這一刻的答案很珍貴');
+    renderDecision();
+  }
+  hideBridge();
+}
+
+/* 時間軸(近 20 筆) */
+function fmtWhen(t){
+  const d=new Date(t), now=new Date();
+  const day0=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  const hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0');
+  if(t>=day0) return '今天 '+hh+':'+mm;
+  if(t>=day0-86400000) return '昨天 '+hh+':'+mm;
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+hh+':'+mm;
+}
+function isBeforeToday(t){
+  const now=new Date();
+  return t < new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+}
+let noteEditId=null;
+function renderTimeline(){
+  const list=document.getElementById('timelineList');
+  const empty=document.getElementById('timelineEmpty');
+  const items=DB.signals.slice(-20).reverse();
+  empty.style.display = items.length ? 'none' : 'block';
+  list.innerHTML='';
+  items.forEach(sig=>{
+    const li=document.createElement('li');
+    const t=document.createElement('span'); t.className='t'; t.textContent=fmtWhen(sig.t);
+    const em=document.createElement('span'); em.className='em'; em.textContent=SIG_META[sig.k].em;
+    const body=document.createElement('div'); body.className='body';
+    if(sig.note){
+      const n=document.createElement('div'); n.textContent=sig.note; body.appendChild(n);
+    }else if(noteEditId===sig.t){
+      const row=document.createElement('div'); row.className='inline-edit';
+      const inp=document.createElement('input');
+      inp.id='noteIn'; inp.maxLength=80; inp.placeholder='想記一句嗎?不寫也沒關係';
+      const ok=document.createElement('button'); ok.textContent='存';
+      const commit=()=>{
+        const v=inp.value.trim();
+        if(v) sig.note=v;
+        noteEditId=null; save(); renderTimeline();
+      };
+      ok.onclick=commit;
+      inp.addEventListener('keydown',e=>{ if(e.key==='Enter') commit(); });
+      row.appendChild(inp); row.appendChild(ok);
+      body.appendChild(row);
+    }else{
+      const add=document.createElement('button'); add.className='note-add';
+      add.textContent='＋想多說一句';
+      add.onclick=()=>{ noteEditId=sig.t; renderTimeline(); };
+      body.appendChild(add);
+    }
+    // 🔥 隔日輕聲反思(#2 告知課題,延後到氣消才問——當下無真相)
+    if(sig.k==='anger' && isBeforeToday(sig.t) && !sig.ref){
+      const sp=document.createElement('div'); sp.className='sprout';
+      const txt=document.createElement('span');
+      txt.textContent='🌱 氣消一點了嗎?當時那件事,有機會先說一聲嗎?';
+      const ok=document.createElement('button'); ok.textContent='嗯,想過了';
+      ok.onclick=()=>{ sig.ref=true; save(); renderTimeline(); };
+      sp.appendChild(txt); sp.appendChild(ok);
+      body.appendChild(sp);
+    }
+    li.appendChild(t); li.appendChild(em); li.appendChild(body);
+    list.appendChild(li);
+  });
+  const focusMe=document.getElementById('noteIn');
+  if(focusMe) focusMe.focus();
+}
+
+/* ═══════════ 決定頁:羅盤 + 權威覆寫(#1/#6/#2) ═══════════ */
+const els={
+  rev:document.getElementById('rev'), urg:document.getElementById('urg'),
+  info:document.getElementById('info'), emo:document.getElementById('emo')
+};
+function paintSlider(el){
+  const v=el.value, color=cssVar('--amber-solid');
+  el.style.background='linear-gradient(to right,'+color+' 0%,'+color+' '+v+'%,var(--border) '+v+'%,var(--border) 100%)';
+}
+function update(){
+  const rev=+els.rev.value, urg=+els.urg.value, info=+els.info.value, emo=+els.emo.value;
+  const r=computeTier(rev,urg,info,emo);
+  const c=TIERS[r.tier];
+  const color=cssVar(c.color);
+  const authority = r.tier==='wait';
+
+  document.getElementById('typeOut').textContent=c.type;
+  document.getElementById('budgetOut').textContent=c.budget;
+  document.getElementById('thresholdOut').textContent = authority ? '暫不下注' : (r.threshold+'%');
+  const sl=document.getElementById('summaryLine');
+  sl.textContent=c.summary; sl.style.color=color;
+
+  const angle=-90+r.speed*1.8;
+  document.getElementById('needle').style.transform='rotate('+angle+'deg)';
+  const arc=document.getElementById('arcFill');
+  arc.setAttribute('stroke-dashoffset', Math.round(330-(r.speed/100)*330));
   arc.setAttribute('stroke', color);
+  const motion=document.getElementById('motion');
+  motion.setAttribute('dur',(4-(r.speed/100)*3).toFixed(1)+'s');
+  try{ motion.beginElement(); }catch(e){}
 
-  const dur = (4 - (speed / 100) * 3).toFixed(1) + 's';
-  const motion = document.getElementById('motion');
-  motion.setAttribute('dur', dur);
-  try { motion.beginElement(); } catch (e) {}
-
-  document.getElementById('warnBox').classList.toggle('show', emo > 60);
+  document.getElementById('warnBox').classList.toggle('show', emo>60 && !authority);
+  const ab=document.getElementById('authBox');
+  ab.classList.toggle('show', authority);
+  // 已有陪跑中的決定 → 不再顯示「開始陪跑」輸入列
+  document.getElementById('startRow').style.display = DB.decision ? 'none' : 'flex';
 
   Object.values(els).forEach(paintSlider);
 }
+Object.values(els).forEach(el=>el.addEventListener('input',update));
 
-Object.values(els).forEach(el => el.addEventListener('input', update));
+/* 決定的生命週期 */
+function startDecision(){
+  const title=document.getElementById('decTitle').value.trim();
+  if(!title){ showToast('先幫這個決定取個名字吧'); return; }
+  DB.decision={title, worst:'', bear:null,
+    people:[{name:'家人',done:false}], samples:{}, createdAt:Date.now()};
+  save();
+  document.getElementById('decTitle').value='';
+  renderDecision(); update();
+  showToast('開始陪跑 ✓ 「'+title+'」');
+}
+// iOS WebView 會擋原生 confirm → 改用「連按兩次」模式:首按變文字,3 秒未確認自動復原
+const armState={};
+function twoTap(key, btn, fn){
+  if(armState[key]){
+    clearTimeout(armState[key].timer);
+    btn.textContent=armState[key].orig;
+    armState[key]=null;
+    fn();
+    return;
+  }
+  const orig=btn.textContent;
+  btn.textContent='再按一次確認';
+  armState[key]={orig, timer:setTimeout(()=>{ btn.textContent=orig; armState[key]=null; },3000)};
+}
+function finishDecision(btn){
+  if(!DB.decision) return;
+  twoTap('finish', btn, ()=>{
+    DB.decision=null; pendingSlot=null; addingPerson=false;
+    save(); renderDecision(); update();
+    showToast('恭喜做出決定 ✨ 陪跑結束');
+  });
+}
+function dropDecision(btn){
+  if(!DB.decision) return;
+  twoTap('drop', btn, ()=>{
+    DB.decision=null; pendingSlot=null; addingPerson=false;
+    save(); renderDecision(); update();
+    showToast('放下了。想清楚時它還在');
+  });
+}
+
+/* 追蹤卡渲染 */
+const MOOD_META={
+  good:{face:'😄', when:'心情好時'},
+  mid: {face:'😐', when:'心情平平時'},
+  low: {face:'🌧', when:'心情差時'}
+};
+const ANS_WORD={do:'傾向做', skip:'傾向不做', unsure:'還說不準'};
+let pendingSlot=null;
+let addingPerson=false;
+
+function renderDecision(){
+  const card=document.getElementById('trackCard');
+  const d=DB.decision;
+  card.style.display = d ? 'block' : 'none';
+  if(!d) return;
+
+  document.getElementById('trackTitle').textContent=d.title;
+
+  const w=document.getElementById('worstIn');
+  if(w.value!==d.worst) w.value=d.worst;
+
+  document.getElementById('bearYes').classList.toggle('on-yes', d.bear===true);
+  document.getElementById('bearNo').classList.toggle('on-no', d.bear===false);
+
+  // 告知圈(#2)
+  const pr=document.getElementById('peopleRow');
+  pr.innerHTML='';
+  d.people.forEach((p,i)=>{
+    const b=document.createElement('button'); b.className='person';
+    const av=document.createElement('div'); av.className='avatar'+(p.done?' done':'');
+    av.textContent='👤';
+    const lbl=document.createElement('span'); lbl.textContent=p.name;
+    b.appendChild(av); b.appendChild(lbl);
+    b.onclick=()=>{ p.done=!p.done; save(); renderDecision(); };
+    pr.appendChild(b);
+  });
+  const addB=document.createElement('button'); addB.className='person';
+  const addAv=document.createElement('div'); addAv.className='avatar add'; addAv.textContent='＋';
+  const addL=document.createElement('span'); addL.textContent='新增';
+  addB.appendChild(addAv); addB.appendChild(addL);
+  addB.onclick=()=>{ addingPerson=!addingPerson; renderDecision(); };
+  pr.appendChild(addB);
+  if(addingPerson){
+    const row=document.createElement('div'); row.className='inline-edit';
+    row.style.width='100%';
+    const inp=document.createElement('input');
+    inp.id='personIn'; inp.maxLength=10; inp.placeholder='這件事還會影響誰?';
+    const ok=document.createElement('button'); ok.textContent='加入';
+    const commit=()=>{
+      const v=inp.value.trim();
+      if(v) d.people.push({name:v,done:false});
+      addingPerson=false; save(); renderDecision();
+    };
+    ok.onclick=commit;
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') commit(); });
+    row.appendChild(inp); row.appendChild(ok);
+    pr.appendChild(row);
+  }
+
+  // 三張臉(#1)
+  const mr=document.getElementById('moodRow');
+  mr.innerHTML='';
+  ['good','mid','low'].forEach(slot=>{
+    const s=d.samples[slot];
+    const b=document.createElement('button');
+    b.className='mood '+(s?'answered':'pending');
+    const face=document.createElement('div'); face.className='face'; face.textContent=MOOD_META[slot].face;
+    const ans=document.createElement('span'); ans.className='ans';
+    ans.textContent = s ? ANS_WORD[s.a] : (slot===pendingSlot ? '選下面的答案' : '等'+MOOD_META[slot].when);
+    b.appendChild(face); b.appendChild(ans);
+    b.onclick=()=>{ pendingSlot = (pendingSlot===slot ? null : slot); renderDecision(); };
+    mr.appendChild(b);
+  });
+  document.getElementById('answerRow').classList.toggle('show', pendingSlot!==null);
+
+  // 裁決
+  const v=sampleVerdict(d.samples);
+  const vb=document.getElementById('verdictBox');
+  vb.className='verdict';
+  if(v==='go'){ vb.classList.add('show','go'); vb.textContent='三張臉都同意了,放心去做 ✨(記得先跟上面的人說一聲)'; }
+  else if(v==='stop'){ vb.classList.add('show','go'); vb.textContent='三張臉都說先不要——那就安心放下,這也是清楚的答案 🍃'; }
+  else if(v==='mixed'){ vb.classList.add('show','hold'); vb.textContent='答案還不一致——心情的波可能還沒走完,再等等,不急'; }
+  const pf=document.getElementById('personIn');
+  if(pf) pf.focus();
+}
+function setBear(yes){
+  if(!DB.decision) return;
+  DB.decision.bear = yes;
+  save(); renderDecision();
+  showToast(yes ? '好,底線清楚了 💪' : '收到。還不行就先不急著動');
+}
+function faceAnswer(a){
+  if(!DB.decision || !pendingSlot) return;
+  DB.decision.samples[pendingSlot]={a, t:Date.now()};
+  pendingSlot=null;
+  save(); renderDecision();
+}
+// 最壞情境即時存(#6):輸入停頓 500ms 後寫入
+let worstTimer;
+document.getElementById('worstIn').addEventListener('input', e=>{
+  clearTimeout(worstTimer);
+  worstTimer=setTimeout(()=>{
+    if(DB.decision){ DB.decision.worst=e.target.value; save(); }
+  },500);
+});
+
+/* ═══════════ 回顧頁(v1 極簡) ═══════════ */
+function renderStats(){
+  const row=document.getElementById('statRow');
+  row.innerHTML='';
+  ['anger','low','high','drain'].forEach(k=>{
+    const n=DB.signals.filter(s=>s.k===k).length;
+    const div=document.createElement('div'); div.className='stat';
+    div.innerHTML='<div class="em">'+SIG_META[k].em+'</div><div class="n">'+n+'</div><div class="lbl">'+SIG_META[k].label+'</div>';
+    row.appendChild(div);
+  });
+}
+
+/* ═══════════ 啟動 ═══════════ */
+DB=load();
+renderTimeline();
+renderDecision();
 update();
 </script>
 </body>
