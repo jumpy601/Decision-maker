@@ -199,6 +199,8 @@
     padding:.4rem .6rem;font-size:15px;color:var(--text);font-family:inherit;min-width:0;}
   .inline-edit button{border:none;border-radius:8px;background:var(--teal-solid);color:#fff;
     padding:.4rem .8rem;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;}
+  .inline-edit button.del{background:var(--coral-solid);}
+  .note-text{cursor:pointer;}
 
   /* ── 回顧頁(v1 極簡) ── */
   .statrow{display:flex;gap:10px;}
@@ -472,6 +474,21 @@ function go(name, btn){
   if(name==='review') renderStats();
 }
 
+// iOS WebView 會擋原生 confirm → 改用「連按兩次」模式:首按變文字,3 秒未確認自動復原
+const armState={};
+function twoTap(key, btn, fn){
+  if(armState[key]){
+    clearTimeout(armState[key].timer);
+    btn.textContent=armState[key].orig;
+    armState[key]=null;
+    fn();
+    return;
+  }
+  const orig=btn.textContent;
+  btn.textContent='再按一次確認';
+  armState[key]={orig, timer:setTimeout(()=>{ btn.textContent=orig; armState[key]=null; },3000)};
+}
+
 /* ═══════════ 信號頁 ═══════════ */
 // 課題對照:anger→#3 / low→#10 / drain→#4;句子=婉瑜親筆
 const SIG_META={
@@ -541,22 +558,35 @@ function renderTimeline(){
     const t=document.createElement('span'); t.className='t'; t.textContent=fmtWhen(sig.t);
     const em=document.createElement('span'); em.className='em'; em.textContent=SIG_META[sig.k].em;
     const body=document.createElement('div'); body.className='body';
-    if(sig.note){
-      const n=document.createElement('div'); n.textContent=sig.note; body.appendChild(n);
-    }else if(noteEditId===sig.t){
+    if(noteEditId===sig.t){
       const row=document.createElement('div'); row.className='inline-edit';
       const inp=document.createElement('input');
-      inp.id='noteIn'; inp.maxLength=80; inp.placeholder='想記一句嗎?不寫也沒關係';
+      inp.id='noteIn'; inp.maxLength=80;
+      inp.placeholder='想記一句嗎?清空=刪掉備註';
+      inp.value=sig.note||'';
       const ok=document.createElement('button'); ok.textContent='存';
       const commit=()=>{
         const v=inp.value.trim();
-        if(v) sig.note=v;
+        if(v) sig.note=v; else delete sig.note;
         noteEditId=null; save(); renderTimeline();
       };
       ok.onclick=commit;
       inp.addEventListener('keydown',e=>{ if(e.key==='Enter') commit(); });
-      row.appendChild(inp); row.appendChild(ok);
+      const del=document.createElement('button'); del.className='del'; del.textContent='刪';
+      del.onclick=()=>{
+        twoTap('delSig'+sig.t, del, ()=>{
+          const idx=DB.signals.indexOf(sig);
+          if(idx>-1) DB.signals.splice(idx,1);
+          noteEditId=null; save(); renderTimeline();
+          showToast('刪掉了,像沒發生過一樣');
+        });
+      };
+      row.appendChild(inp); row.appendChild(ok); row.appendChild(del);
       body.appendChild(row);
+    }else if(sig.note){
+      const n=document.createElement('div'); n.className='note-text'; n.textContent=sig.note;
+      n.onclick=()=>{ noteEditId=sig.t; renderTimeline(); };
+      body.appendChild(n);
     }else{
       const add=document.createElement('button'); add.className='note-add';
       add.textContent='＋想多說一句';
@@ -631,20 +661,6 @@ function startDecision(){
   document.getElementById('decTitle').value='';
   renderDecision(); update();
   showToast('開始陪跑 ✓ 「'+title+'」');
-}
-// iOS WebView 會擋原生 confirm → 改用「連按兩次」模式:首按變文字,3 秒未確認自動復原
-const armState={};
-function twoTap(key, btn, fn){
-  if(armState[key]){
-    clearTimeout(armState[key].timer);
-    btn.textContent=armState[key].orig;
-    armState[key]=null;
-    fn();
-    return;
-  }
-  const orig=btn.textContent;
-  btn.textContent='再按一次確認';
-  armState[key]={orig, timer:setTimeout(()=>{ btn.textContent=orig; armState[key]=null; },3000)};
 }
 function finishDecision(btn){
   if(!DB.decision) return;
